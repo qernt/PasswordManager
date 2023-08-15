@@ -16,8 +16,3 @@ AuthDialog::~AuthDialog()
     delete ui;
 }
 
-void QDialog::closeEvent(QCloseEvent *event)
-{
-    qApp->closeAllWindows();
-}
-

@@ -12,14 +12,18 @@ class PasswordField : public QWidget
     Q_OBJECT
 
 public:
-    explicit PasswordField(QWidget *parent = nullptr, const QString &login = "", const QString &password = "", const QString &applicationName = "");
+    explicit PasswordField(QWidget *parent = nullptr, const QString &login = "", const QString &password = "", const QString &applicationName = "", const int &ID = 0);
     ~PasswordField();
 
 private slots:
     void on_pushButton_delete_clicked();
 
+public:
+    int id;
+
 private:
     Ui::PasswordField *ui;
+
 };
 
 #endif // PASSWORDFIELD_H
