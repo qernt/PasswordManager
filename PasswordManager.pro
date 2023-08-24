@@ -1,6 +1,12 @@
 QT       += core gui
 QT += sql
 
+QT += network
+
+LIBS += -L/opt/homebrew/Cellar/openssl@3/3.1.2/lib -lssl -lcrypto
+
+INCLUDEPATH += /opt/homebrew/Cellar/openssl@3/3.1.2/include
+
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
@@ -11,19 +17,25 @@ CONFIG += c++17
 
 SOURCES += \
     authdialog.cpp \
+    errordialog.cpp \
     main.cpp \
     mainwindow.cpp \
-    passwordfield.cpp
+    passwordfield.cpp \
+    registrationdialog.cpp
 
 HEADERS += \
     authdialog.h \
+    errordialog.h \
     mainwindow.h \
-    passwordfield.h
+    passwordfield.h \
+    registrationdialog.h
 
 FORMS += \
     authdialog.ui \
+    errordialog.ui \
     mainwindow.ui \
-    passwordfield.ui
+    passwordfield.ui \
+    registrationdialog.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

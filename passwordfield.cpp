@@ -1,7 +1,7 @@
 #include "passwordfield.h"
 #include "ui_passwordfield.h"
 
-PasswordField::PasswordField(QWidget *parent, const QString &login, const QString &password, const QString &applicationName, const int &ID) :
+PasswordField::PasswordField(QWidget *parent, QString login, QString password, QString applicationName, int ID, MainWindow *mw) :
     QWidget(parent),
     ui(new Ui::PasswordField)
 {
@@ -11,6 +11,12 @@ PasswordField::PasswordField(QWidget *parent, const QString &login, const QStrin
     ui->label_password->setText(password);
 
     id = ID;
+
+    mainWindow = mw;
+
+    qDebug() << id;
+
+    connect(mainWindow, SIGNAL(changeFieldsId(int)), this, SLOT(changeId(int)));
 }
 
 PasswordField::~PasswordField()
@@ -20,6 +26,14 @@ PasswordField::~PasswordField()
 
 void PasswordField::on_pushButton_delete_clicked()
 {
-    this->deleteLater();   
+    this->deleteLater();
+    mainWindow->deleteFieldfromDB(id);
+}
+
+void PasswordField::changeId(int deletedId)
+{
+    qDebug() << id;
+    if(id > deletedId)
+        id--;
 }
 

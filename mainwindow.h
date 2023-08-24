@@ -23,17 +23,29 @@ public:
 private:
     void addNewField(QString login, QString password, QString name);
     void authentification();
-    void addInToDatabase();
+    void registration();
     void loadData();
+    void showErrorMassage(QString errorText);
 
 private slots:
     void on_pushButton_add_clicked();
+
+public:
+    void deleteFieldfromDB(int id);
+    QString makeHashFromString(QString inputString);
+    QString readHash();
 
 private:
     Ui::MainWindow *ui;
     QVBoxLayout *scrollLayout;
     QSqlDatabase db;
     QSqlQuery query;
-    int countOfFields = 0;
+    int countOfFields = 1;
+    QString password;
+
+signals:
+    void changeFieldsId(int deletedId);
+    void successAuth();
+
 };
 #endif // MAINWINDOW_H
