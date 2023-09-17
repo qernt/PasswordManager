@@ -38,7 +38,6 @@ MainWindow::MainWindow(QWidget *parent)
             query.exec("SELECT MAX(id) FROM data");
             if (query.next()) {
                 countOfFields = query.value(0).toInt() + 1;
-                qDebug() << "Maximum id in the table: " << query.value(0).toInt();
             }else{
                 qDebug() << "Error retrieving maximum id: " << query.lastError().text();
             }
@@ -186,7 +185,7 @@ QString MainWindow::readHash()
     }
 }
 
-QString MainWindow::encryptAES(const QString& plaintext)
+QString MainWindow::encryptAES(const QString& data)
 {
     AES_KEY aesKey;
     QByteArray key = getKey();
@@ -195,7 +194,7 @@ QString MainWindow::encryptAES(const QString& plaintext)
         return QString();
     }
 
-    QByteArray byteArray = plaintext.toUtf8();
+    QByteArray byteArray = data.toUtf8();
 
     int paddingSize = AES_BLOCK_SIZE - (byteArray.size() % AES_BLOCK_SIZE);
     byteArray.append(paddingSize, static_cast<char>(paddingSize));
@@ -249,7 +248,7 @@ void MainWindow::setKey(const QString &newKey)
 void MainWindow::registration()
 {
     std::unique_ptr<RegistrationDialog> registDialog(new RegistrationDialog());
-//    registDialog->setWindowModality(Qt::ApplicationModal);
+    registDialog->setWindowModality(Qt::ApplicationModal);
     if(registDialog->exec() != QDialog::Accepted){
         QCoreApplication::exit();
     }else{
