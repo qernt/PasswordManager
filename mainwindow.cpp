@@ -31,7 +31,7 @@ MainWindow::MainWindow(QWidget *parent)
     if (db.open()){
         qDebug() << "Database opened!";
         query = QSqlQuery(db);
-        query.exec("CREATE TABLE IF NOT EXISTS data (id INT PRIMARY KEY,name TEXT , login TEXT, encrypted_password BLOB)");
+        query.exec("CREATE TABLE IF NOT EXISTS data (id INT PRIMARY KEY,name TEXT , login TEXT, encrypted_password TEXT)");
         query.prepare("SELECT * FROM data WHERE id = 0;");
         if (query.exec() && query.next()){
             isRegistred = true;
@@ -63,15 +63,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::addNewField(QString login, QString password, QString name)
 {
-    QByteArray inputPasswordByteArray = password.toUtf8();
-    const unsigned char* inputPasswordCharArray = reinterpret_cast<const unsigned char*>(inputPasswordByteArray.constData());
-
-    unsigned char cipherText[strlen(reinterpret_cast<const char*>(inputPasswordCharArray))];
-
-    encryptPassword(inputPasswordCharArray, cipherText);
-
-    QByteArray encryptedData(reinterpret_cast<const char*>(cipherText), strlen(reinterpret_cast<const char*>(inputPasswordCharArray)));
-    QString encryptedDataString = encryptedData.toBase64(); // rewright this part in encrypt function
+    QString encryptedDataString = encryptAES(password);
 
     query.prepare("INSERT INTO data (id, name, login, encrypted_password) VALUES (:id, :name, :login, :encrypted_password)");
     query.bindValue(":id", countOfFields);
@@ -110,8 +102,9 @@ void MainWindow::loadData()
             if(id != 0){
                 QString name = query.value(1).toString();
                 QString login = query.value(2).toString();
-                QString password = query.value(3).toString();
-                PasswordField *field = new PasswordField(this, login, password, name, id, this);
+                QString encryptedPassword = query.value(3).toString();
+                QString decryptedPassword = decryptAES(encryptedPassword);
+                PasswordField *field = new PasswordField(this, login, decryptedPassword, name, id, this);
                 scrollLayout->insertWidget(0, field);
             }
         }
@@ -193,21 +186,43 @@ QString MainWindow::readHash()
     }
 }
 
-void MainWindow::encryptPassword(const unsigned char* inputPasswordCharArray,unsigned char* cipherText)
+QString MainWindow::encryptAES(const QString& plaintext)
 {
-    AES_KEY encryptKey;
+    AES_KEY aesKey;
+    QByteArray key = getKey();
 
-    QByteArray loginPasswordByteArray = getLoginPassword().toUtf8();
-    const unsigned char* key = reinterpret_cast<const unsigned char*>(loginPasswordByteArray.constData());
+    if (AES_set_encrypt_key((const unsigned char*)key.data(), 128, &aesKey) < 0) {
+        return QString();
+    }
 
-    AES_set_encrypt_key(key, 128, &encryptKey);
+    QByteArray byteArray = plaintext.toUtf8();
 
-    AES_ecb_encrypt(inputPasswordCharArray, cipherText, &encryptKey, AES_ENCRYPT);
+    int paddingSize = AES_BLOCK_SIZE - (byteArray.size() % AES_BLOCK_SIZE);
+    byteArray.append(paddingSize, static_cast<char>(paddingSize));
+
+    QByteArray ciphertext(byteArray.size(), 0);
+    AES_encrypt((const unsigned char*)byteArray.data(), (unsigned char*)ciphertext.data(), &aesKey);
+
+    return QString::fromUtf8(ciphertext.toBase64());
 }
 
-QString MainWindow::decryptPassword(const QString inputPasswordCharArray)
-{
+QString MainWindow::decryptAES(const QString& ciphertext) {
+    AES_KEY aesKey;
+    QByteArray key = getKey();
 
+    if (AES_set_decrypt_key((const unsigned char*)key.data(), 128, &aesKey) < 0) {
+        return QString();
+    }
+
+    QByteArray ciphertextBytes = QByteArray::fromBase64(ciphertext.toUtf8());
+
+    QByteArray plaintext(ciphertextBytes.size(), 0);
+    AES_decrypt((const unsigned char*)ciphertextBytes.data(), (unsigned char*)plaintext.data(), &aesKey);
+
+    int paddingSize = plaintext[plaintext.size() - 1];
+    plaintext = plaintext.left(plaintext.size() - paddingSize);
+
+    return QString::fromUtf8(plaintext);
 }
 
 QString MainWindow::getLoginPassword() const
@@ -220,6 +235,17 @@ void MainWindow::setLoginPassword(const QString &newLoginPassword)
     loginPassword = newLoginPassword;
 }
 
+QByteArray MainWindow::getKey()
+{
+    return key;
+}
+
+void MainWindow::setKey(const QString &newKey)
+{
+    QByteArray loginPasswordByteArray = newKey.toUtf8();
+    key = loginPasswordByteArray;
+}
+
 void MainWindow::registration()
 {
     std::unique_ptr<RegistrationDialog> registDialog(new RegistrationDialog());
@@ -229,6 +255,7 @@ void MainWindow::registration()
     }else{
         query.prepare("INSERT INTO data (id, name, login, encrypted_password) VALUES (0, 'hash', NULL, :encrypted_password)");
         setLoginPassword(registDialog->getValue());
+        setKey(registDialog->getValue());
         QString hashedPassword = makeHashFromString(getLoginPassword());
         query.bindValue(":encrypted_password", hashedPassword);
         if(query.exec()){
@@ -238,4 +265,3 @@ void MainWindow::registration()
         }
     }
 }
-
