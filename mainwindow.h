@@ -34,6 +34,12 @@ public:
     void deleteFieldfromDB(int id);
     QString makeHashFromString(QString inputString);
     QString readHash();
+    void encryptPassword(const unsigned char* inputPasswordCharArray, unsigned char* cipherText);
+    QString decryptPassword(const QString inputPasswordCharArray);
+
+
+    QString getLoginPassword() const;
+    void setLoginPassword(const QString &newLoginPassword);
 
 private:
     Ui::MainWindow *ui;
@@ -41,7 +47,7 @@ private:
     QSqlDatabase db;
     QSqlQuery query;
     int countOfFields = 1;
-    QString password;
+    QString loginPassword;
 
 signals:
     void changeFieldsId(int deletedId);

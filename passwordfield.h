@@ -18,11 +18,14 @@ public:
     explicit PasswordField(QWidget *parent = nullptr, QString login = "", QString password = "", QString applicationName = "", int ID = 0, MainWindow *mw = nullptr);
     ~PasswordField();
 
+    int getId() const;
+    void setId(int newId);
+
 private slots:
     void on_pushButton_delete_clicked();
     void changeId(int deletedId);
 
-public:
+private:
     int id;
 
 private:

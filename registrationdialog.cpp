@@ -10,6 +10,7 @@ RegistrationDialog::RegistrationDialog(QWidget *parent) :
     ui->setupUi(this);
 
     this->setWindowFlags(Qt::FramelessWindowHint);
+    this->setWindowModality(Qt::ApplicationModal);
 }
 
 RegistrationDialog::~RegistrationDialog()

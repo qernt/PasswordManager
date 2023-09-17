@@ -37,3 +37,13 @@ void PasswordField::changeId(int deletedId)
         id--;
 }
 
+int PasswordField::getId() const
+{
+    return id;
+}
+
+void PasswordField::setId(int newId)
+{
+    id = newId;
+}
+

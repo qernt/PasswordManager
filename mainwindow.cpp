@@ -6,6 +6,8 @@
 
 #include <iostream>
 #include <openssl/sha.h>
+#include <openssl/aes.h>
+#include <openssl/rand.h>
 
 
 
@@ -29,7 +31,7 @@ MainWindow::MainWindow(QWidget *parent)
     if (db.open()){
         qDebug() << "Database opened!";
         query = QSqlQuery(db);
-        query.exec("CREATE TABLE IF NOT EXISTS data (id INT PRIMARY KEY,name TEXT , login TEXT, password TEXT)");
+        query.exec("CREATE TABLE IF NOT EXISTS data (id INT PRIMARY KEY,name TEXT , login TEXT, encrypted_password BLOB)");
         query.prepare("SELECT * FROM data WHERE id = 0;");
         if (query.exec() && query.next()){
             isRegistred = true;
@@ -61,11 +63,22 @@ MainWindow::~MainWindow()
 
 void MainWindow::addNewField(QString login, QString password, QString name)
 {
-    query.prepare("INSERT INTO data (id, name, login, password) VALUES (:id, :name, :login, :password)");
+    QByteArray inputPasswordByteArray = password.toUtf8();
+    const unsigned char* inputPasswordCharArray = reinterpret_cast<const unsigned char*>(inputPasswordByteArray.constData());
+
+    unsigned char cipherText[strlen(reinterpret_cast<const char*>(inputPasswordCharArray))];
+
+    encryptPassword(inputPasswordCharArray, cipherText);
+
+    QByteArray encryptedData(reinterpret_cast<const char*>(cipherText), strlen(reinterpret_cast<const char*>(inputPasswordCharArray)));
+    QString encryptedDataString = encryptedData.toBase64(); // rewright this part in encrypt function
+
+    query.prepare("INSERT INTO data (id, name, login, encrypted_password) VALUES (:id, :name, :login, :encrypted_password)");
     query.bindValue(":id", countOfFields);
     query.bindValue(":name", name);
     query.bindValue(":login", login);
-    query.bindValue(":password", password);
+    query.bindValue(":encrypted_password", encryptedDataString);
+
     if(query.exec()){
         qDebug() << "Data inserted successfully!";
         PasswordField *field = new PasswordField(this, login, password, name, countOfFields, this);
@@ -111,18 +124,16 @@ void MainWindow::showErrorMassage(QString errorText)
 {
     std::unique_ptr<ErrorDialog> errorDialog(new ErrorDialog(this, errorText));
     errorDialog->setWindowModality(Qt::ApplicationModal);
-    QCoreApplication::processEvents();
     errorDialog->exec();
 }
 
 QString MainWindow::makeHashFromString(QString inputString)
 {
-    QByteArray byteArray = inputString.toUtf8(); // Преобразование строки в байтовый массив
+    QByteArray byteArray = inputString.toUtf8();
 
-    unsigned char hash[SHA256_DIGEST_LENGTH]; // Буфер для хеша
-    SHA256((const unsigned char*)byteArray.data(), byteArray.size(), hash); // Выполнение хеширования
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256((const unsigned char*)byteArray.data(), byteArray.size(), hash);
 
-    // Преобразование хеша в строку HEX
     QString hashedString;
     for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
         hashedString.append(QString("%1").arg(hash[i], 2, 16, QChar('0')));
@@ -138,7 +149,7 @@ void MainWindow::on_pushButton_add_clicked()
         ui->lineEdit_login->clear();
         ui->lineEdit_password->clear();
     }else if(ui->lineEdit_password->text() == nullptr && ui->lineEdit_login->text() == nullptr){
-        showErrorMassage("Password ang login fields are free");
+        showErrorMassage("Password and login fields are free");
     }
     else if(ui->lineEdit_password->text() == nullptr){
         showErrorMassage("Password field is free");
@@ -182,17 +193,44 @@ QString MainWindow::readHash()
     }
 }
 
+void MainWindow::encryptPassword(const unsigned char* inputPasswordCharArray,unsigned char* cipherText)
+{
+    AES_KEY encryptKey;
+
+    QByteArray loginPasswordByteArray = getLoginPassword().toUtf8();
+    const unsigned char* key = reinterpret_cast<const unsigned char*>(loginPasswordByteArray.constData());
+
+    AES_set_encrypt_key(key, 128, &encryptKey);
+
+    AES_ecb_encrypt(inputPasswordCharArray, cipherText, &encryptKey, AES_ENCRYPT);
+}
+
+QString MainWindow::decryptPassword(const QString inputPasswordCharArray)
+{
+
+}
+
+QString MainWindow::getLoginPassword() const
+{
+    return loginPassword;
+}
+
+void MainWindow::setLoginPassword(const QString &newLoginPassword)
+{
+    loginPassword = newLoginPassword;
+}
+
 void MainWindow::registration()
 {
     std::unique_ptr<RegistrationDialog> registDialog(new RegistrationDialog());
-    registDialog->setWindowModality(Qt::ApplicationModal);
+//    registDialog->setWindowModality(Qt::ApplicationModal);
     if(registDialog->exec() != QDialog::Accepted){
         QCoreApplication::exit();
     }else{
-        query.prepare("INSERT INTO data (id, name, login, password) VALUES (0, 'hash', 'hash', :password)");
-        password = registDialog->getValue();
-        QString hashedPassword = makeHashFromString(password);
-        query.bindValue(":password", hashedPassword);
+        query.prepare("INSERT INTO data (id, name, login, encrypted_password) VALUES (0, 'hash', NULL, :encrypted_password)");
+        setLoginPassword(registDialog->getValue());
+        QString hashedPassword = makeHashFromString(getLoginPassword());
+        query.bindValue(":encrypted_password", hashedPassword);
         if(query.exec()){
             emit successAuth();
         }else{

@@ -23,6 +23,7 @@ AuthDialog::~AuthDialog()
 void AuthDialog::on_pushButton_clicked()
 {
     if(mainWindow->makeHashFromString(ui->lineEdit->text()) == mainWindow->readHash()){
+        mainWindow->setLoginPassword(ui->lineEdit->text());
         accept();
     }else{
         ErrorDialog *errorDialog = new ErrorDialog(this, "Incorrect password");
